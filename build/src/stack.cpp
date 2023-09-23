@@ -1,17 +1,24 @@
 #include "stack.h"
+#include <stdio.h>
 
 
 #define getPtr( stk, pos ) ptrGetter( ( stk ), ( pos ), sizeof( elem_t ) )
-#define PERSON( pos ) destroyPart( pos, sizeof( egypt_t ) )
+
+#define PERSON( pos )      destroyPart( pos, sizeof( egypt_t ) )
 
 
-static uint64_t stackRealloc ( stack* stk, uint64_t size );
-static uint64_t stackOk      ( stack* stk );
-static void destroyPart      ( void* ptr, size_t size );
-static int isPoisoned        ( void* ptr, size_t size );
-static void ptrSetter        ( stack* stk, uint64_t pos, elem_t value );
-static elem_t* ptrGetter     ( stack* stk, uint64_t pos, size_t size );
+static uint64_t stackRealloc  ( stack* stk, uint64_t size );
+static uint64_t stackOk       ( stack* stk );
 
+static void destroyPart       (       void* ptr, size_t size );
+static int isPoisoned         ( const void* ptr, size_t size );
+
+static void ptrSetter         (       stack* stk, uint64_t pos, elem_t value );
+static elem_t* ptrGetter      ( const stack* stk, uint64_t pos, size_t size );
+
+static hash_t countStructHash ( const stack* stk );
+static hash_t countDataHash   ( const stack* stk );
+static void recalculateHash   ( stack* stk );
 // stackDump(); // Meta diagnostic ( this pizdec )
 /*
 STACK[0x8003F0] "stk" from main.cpp ( 35 ) main()
@@ -45,10 +52,30 @@ void stackCtor( stack* stk ){
 
     stk->data = ( elem_t* ) calloc( sizeof( elem_t ), stk->capacity );
 
-    PERSON( &( stk->slave ) );
+    for ( stackSize_t pos = 0; pos < stk->capacity; pos++  )
+        destroyPart( getPtr( stk, pos ), sizeof( elem_t ) );
+
+    PERSON( &( stk->slave   ) );
     PERSON( &( stk->pharaon ) );
 
+    recalculateHash(stk);
+
     // everything is ok
+}
+
+
+static void recalculateHash( stack* stk ){
+    stk->structHash = countStructHash( stk );
+    stk->dataHash   = countDataHash  ( stk );
+}
+
+
+static hash_t countStructHash( const stack* stk ){
+    return hash( stk, sizeof( stack ) - sizeof( hash_t ) * 2 );
+}
+
+static hash_t countDataHash( const stack* stk ){
+    return hash( stk->data,  sizeof( elem_t ) * stk->capacity );
 }
 
 
@@ -58,7 +85,7 @@ void stackDtor( stack* stk ){
         destroyPart( ( void* ) getPtr( stk, pos ), sizeof( elem_t ) );
 
     free( stk->data );
-    stk->size = -1;
+    stk->size     = -1;
     stk->capacity = -2;
 }
 
@@ -72,6 +99,8 @@ uint64_t stackPush( stack* stk, elem_t value ){
 
     ptrSetter( stk, stk->size, value );
     stk->size++;
+
+    recalculateHash( stk );
 
     return value;
 }
@@ -88,11 +117,13 @@ uint64_t stackPop( stack* stk, elem_t* retValue ){
 
     destroyPart( ( void* ) ptrGetter( stk, stk->size, sizeof( elem_t ) ), sizeof( elem_t ) );
 
+    recalculateHash( stk );
+
     return result;
 }
 
-static elem_t* ptrGetter( stack* stk, uint64_t pos, size_t size ){
-    return ( elem_t* )( stk->data + sizeof( egypt_t ) + pos * size );
+static elem_t* ptrGetter( const stack* stk, uint64_t pos, size_t size ){
+    return ( elem_t* )( stk->data + pos * size );
 }
 
 static void ptrSetter( stack* stk, uint64_t pos, elem_t value ){
@@ -168,7 +199,7 @@ static void destroyPart( void* ptr, size_t size ){
 }
 
 
-static int isPoisoned( void* ptr, size_t size ){
+static int isPoisoned( const void* ptr, size_t size ){
 
     size_t front_pos = 0;
     int cnt_8byte    = 0;
@@ -215,17 +246,15 @@ static int isPoisoned( void* ptr, size_t size ){
 
 
 static uint64_t stackRealloc( stack* stk, uint64_t size ){
-
-    stack* ptr = ( stack* ) realloc( stk, size );
-
+    void* ptr = realloc( stk->data, size );
     if ( ptr ){
-        stk = ptr;
+        stk->data = ptr;
         stk->capacity = size / sizeof( elem_t );
 
         return STACK_ERRORS::OK;
     }
 
-    stk = ptr;
+    stk->data = ptr;
     return STACK_ERRORS::STACK_OUT_OF_MEMORY;
 
 }
@@ -236,19 +265,30 @@ static uint64_t stackOk( stack* stk ){
 
     if ( !stk ) res |= STACK_NULL;
 
-    if ( stk->capacity == stk->size ){
-
-        uint64_t result = stackRealloc( stk, stk->capacity * MULTYPLIER * sizeof( elem_t ) );
-
-        if ( result )
-            return STACK_OUT_OF_MEMORY;
-    }
-
     if ( stk->capacity < stk->size ) res |= STACK_OUT_OF_BOUNDS;
     if ( !stk->data )                res |= STACK_DATA_NULL;
 
     if ( !isPoisoned( ( void* ) &( stk->pharaon ), sizeof( egypt_t ) ) ) res |= EGYPT_SYSTEM_DOWN;
     if ( !isPoisoned( ( void* ) &( stk->slave ),   sizeof( egypt_t ) ) ) res |= EGYPT_SYSTEM_DOWN;
+
+    if ( !checkHash( stk->dataHash,   countDataHash( stk ) ) )   res |= HASH_DATA_ERROR;
+
+    if ( !checkHash( stk->structHash, countStructHash( stk ) ) ) res |= HASH_STRUCT_ERROR;
+
+    if ( stk->capacity == stk->size ){
+
+        uint64_t result = stackRealloc( stk, stk->capacity * MULTYPLIER * sizeof( elem_t ) );
+
+        if ( result )
+            res |= STACK_OUT_OF_MEMORY;
+    }
+
+    if ( stk->size * MULTYPLIER * 2 < stk->capacity && stk->capacity > START_CAPACITY ){
+        uint64_t result = stackRealloc( stk, stk->capacity / MULTYPLIER * sizeof( elem_t ) );
+
+        if ( result )
+            res |= STACK_OUT_OF_MEMORY;
+    }
 
     return res;
 }
