@@ -109,6 +109,9 @@ uint64_t stackPop( stack* stk, elem_t* retValue ){
 
     uint64_t result = stackOk( stk );
 
+    if ( stk->size == 0 )
+        res |= STACK_ERRORS::STACK_OUT_OF_BOUNDS;
+
     if ( result != STACK_ERRORS::OK )
         return result;
 
