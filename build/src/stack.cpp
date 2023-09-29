@@ -32,7 +32,7 @@ static uint64_t stackOk       ( stack* stk );
 
 static void destroyParts      (       void* ptr, size_t elSize, uint64_t nElems );
 static void destroyPart       (       void* ptr, size_t size );
-static int isPoisoned         ( const void* ptr, size_t size );
+static int  isPoisoned        ( const void* ptr, size_t size );
 
 static void ptrSetter         (       stack* stk, uint64_t pos, elem_t value );
 static elem_t* ptrGetter      ( const stack* stk, uint64_t pos, size_t size );
@@ -303,6 +303,7 @@ static uint64_t stackOk( stack* stk ){
         if ( !checkHash( stk->structHash, countStructHash( stk ) ) ) res |= HASH_STRUCT_ERROR;
 
         if ( !( res & HASH_STRUCT_ERROR )){ // if Struct is modified, we do not use data in it
+
             if ( !checkHash( stk->dataHash,   countDataHash( stk ) ) )   res |= HASH_DATA_ERROR;
 
             if ( stk->capacity < stk->size ) res |= STACK_OUT_OF_BOUNDS;
