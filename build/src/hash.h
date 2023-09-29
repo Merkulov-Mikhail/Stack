@@ -5,7 +5,7 @@
     #include <inttypes.h>
 
 
-    const uint64_t BIG_NUMBER = 982451653; // Простое число, меньшее 10 ** 9
+    const uint64_t BIG_NUMBER = 2147483647; // Простое число
 
 
     typedef int64_t hash_t;
@@ -37,8 +37,8 @@
 
         @return возвращает ( x ** power ) % mod
     */
-    uint64_t fastPow( uint64_t x, uint64_t power, uint64_t mod );
+    int64_t fastPow( uint64_t x, uint64_t power, const uint64_t mod );
 
     int implication( char a, char b );
-    int checkHash( hash_t toCheck, hash_t right);
+    int checkHash( hash_t toCheck, hash_t right );
 #endif
