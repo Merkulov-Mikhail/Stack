@@ -104,7 +104,7 @@ void stackDtor( stack* stk ){
 
 
 uint64_t stackPush( stack* stk, elem_t value ){
-
+    // printf("%p", stk);
     uint64_t result = stackOk( stk );
 
     if ( result != STACK_ERRORS::OK )
@@ -145,7 +145,7 @@ uint64_t stackPop( stack* stk, elem_t* retValue ){
 }
 
 static elem_t* ptrGetter( const stack* stk, uint64_t pos, size_t size ){
-    return ( elem_t* )( stk->data + pos * size + sizeof( egypt_t ) );
+    return ( elem_t* )( stk->data + pos * size );
 }
 
 static void ptrSetter( stack* stk, uint64_t pos, elem_t value ){
@@ -201,6 +201,7 @@ static void destroyPart( void* ptr, size_t size ){
             front_pos += 4;
             size -= 4;
 
+            cnt_8byte *= 2;
         }
 
         else if ( size >= 2 ){
@@ -299,13 +300,13 @@ static uint64_t stackOk( stack* stk ){
 
     if ( !( res & EGYPT_SYSTEM_DOWN ) ){ // if canarys are dead, we definitly have an UB
 
-        if ( !stk->data )                res |= STACK_DATA_NULL;
         if ( !checkHash( stk->structHash, countStructHash( stk ) ) ) res |= HASH_STRUCT_ERROR;
 
         if ( !( res & HASH_STRUCT_ERROR )){ // if Struct is modified, we do not use data in it
             if ( !checkHash( stk->dataHash,   countDataHash( stk ) ) )   res |= HASH_DATA_ERROR;
 
             if ( stk->capacity < stk->size ) res |= STACK_OUT_OF_BOUNDS;
+            if ( !stk->data )                res |= STACK_DATA_NULL;
         }
     }
 
