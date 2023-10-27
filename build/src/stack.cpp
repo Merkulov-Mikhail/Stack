@@ -25,8 +25,6 @@ STACK[0x8003F0] "stk" from main.cpp ( 35 ) main()
 
 #define PERSON( pos )      destroyPart( pos, sizeof( egypt_t ) )
 
-#define stackDump( stk, res )   _stackDump( ( stk ), #stk, __LINE__, __func__, __FILE__, res )
-
 static uint64_t stackRealloc  ( stack* stk, uint64_t size );
 static uint64_t stackOk       ( stack* stk );
 
@@ -41,10 +39,8 @@ static hash_t countStructHash ( const stack* stk );
 static hash_t countDataHash   ( const stack* stk );
 static void recalculateHash   ( stack* stk );
 
-static void _stackDump        ( const stack* stk, const char* stkName, int line, const char* funcName, const char* fileName, uint64_t res );
-
 static void bytesPrint        ( void* ptr, size_t size );
-// stackDump(); // Meta diagnostic ( this pizdec )
+// stackDump(); // Meta diagnostic
 
 
 /*
@@ -53,7 +49,7 @@ No dump ):
 
 
 void stackCtor( stack* stk ){
-
+    assert(stk);
     stk->size = 0;
     stk->capacity = START_CAPACITY;
 
@@ -367,7 +363,8 @@ static void bytesPrint( void* ptr, size_t size ){
     }
 }
 
-static void _stackDump        ( const stack* stk, const char* stkName, int line, const char* funcName, const char* fileName, uint64_t res ){
+
+void _stackDump        ( const stack* stk, const char* stkName, int line, const char* funcName, const char* fileName, uint64_t res ){
     printf( "\n\n-----------------------"
              "\nREASONS FOR THIS OUTPUT:\n" );
 
@@ -452,8 +449,38 @@ static void _stackDump        ( const stack* stk, const char* stkName, int line,
     printf( "}\n" );
 }
 
+void _littleDump        ( const stack* stk, const char* stkName, int line, const char* funcName, const char* fileName ){
+    printf( "-----------------------\n\n\n" );
 
+    printf( "STACK[0x%p] \"%s\" from %s ( %d ) %s\n{\n", &stk, stkName, fileName, line, funcName );
 
+    printf( "\tsize    \t = %lld\n", stk->size );
+    printf( "\tcapacity\t = %lld\n", stk->capacity );
+    printf( "\t{\n" );
+
+    for ( int64_t pos = ((int64_t) (stk->size)) - 5; pos < (int64_t) stk->size + 5 && pos < (int64_t) stk->capacity; pos++ ){
+        if (pos < 0)
+            pos = 0;
+
+        int cellStatus = isPoisoned( stk->data + pos * sizeof( elem_t ), sizeof( elem_t ) );
+
+        if ( cellStatus )
+            printf( "\t\t [%lld]\t = ", pos );
+        else
+            printf( "\t\t*[%lld]\t = ", pos );
+
+        bytesPrint( stk->data + pos * sizeof( elem_t ), sizeof( elem_t ) );
+        if ( cellStatus )
+            printf(" (POISON)");
+        else
+            printf(" (OK)");
+
+        printf( "\n" );
+    }
+
+    printf( "\t}\n" );
+    printf( "}\n" );
+}
 
 /*
 [5] [1] [2] [3] [4] [ ]

@@ -6,6 +6,7 @@
 
 
     #include <cstddef>
+    #include <cassert>
     #include <cstdint>
     #include <stdlib.h>
 
@@ -14,7 +15,11 @@
     const int MULTYPLIER = 2;
     const int START_CAPACITY = 2;
 
-    typedef uint64_t elem_t;
+    #define  stackDump( stk, res )  _stackDump( ( stk ), #stk, __LINE__, __func__, __FILE__, res )
+    #define littleDump( stk, res ) _littleDump( ( stk ), #stk, __LINE__, __func__, __FILE__, )
+
+
+    typedef int64_t elem_t;
     typedef uint64_t egypt_t;
     typedef uint64_t stackSize_t;
 
@@ -47,5 +52,7 @@
     uint64_t stackPush( stack* stk, elem_t  value );
     uint64_t stackPop ( stack* stk, elem_t* retValue=nullptr );
 
+    void _stackDump        ( const stack* stk, const char* stkName, int line, const char* funcName, const char* fileName, uint64_t res );
+    void _littleDump       ( const stack* stk, const char* stkName, int line, const char* funcName, const char* fileName );
 
 #endif
